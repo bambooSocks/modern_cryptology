@@ -15,7 +15,7 @@ def generateDeltaSet(randomValue=0, chosenIndex=0):
 # Encrypts delta set
 def encryptDeltaSet(deltaSet, key):
     # apply encryption with provided key on each of the states in delta set
-    return [encrypt(state,key) for state in deltaSet]
+    return [encrypt(state, key) for state in deltaSet]
 
 # Reverse the value of a byte using given guess and position
 def reverseGuessPositionValue(guess, position, deltaState):
@@ -47,17 +47,21 @@ def checkAllGuesses(position, encryptedDeltaSet):
 def getFinalGuess(position, encryptedDeltaSets):
     # get all the guesses for the first delta set
     correctGuesses = checkAllGuesses(position, encryptedDeltaSets[0])
+    
+    # in case that there is only one guess return
+    if len(correctGuesses)==1:
+        return correctGuesses[0]
 
     # check for the rest of delta sets
     for idx in range(1,len(encryptedDeltaSets)):
-        # in case that there is only one guess return
-        if len(correctGuesses)==1:
-            return correctGuesses[0]
         # check guesses for next delta set
         cg = checkAllGuesses(position, encryptedDeltaSets[idx])
         # find intersection of the previous guesses and the new ones
         # this should reduce the set of initial guesses to one value
         correctGuesses=[value for value in cg if value in correctGuesses]
+        # in case that there is only one guess return
+        if len(correctGuesses)==1:
+            return correctGuesses[0]
     # in the case that the delta sets do not reduce the guesses to only one guess
     # then the function throws an exception
     raise Exception("couldn't find final guess")
@@ -80,29 +84,29 @@ def reverseWordListOrder(wordList):
 # reverseExpandedKey (Nr + 1) keys * 16 bytes = 80 bytes
 def invertKeySchedule(lastRoundKey):
     # put the last round key into the reverse expanded key buffer in reverse word order
-    reverseExpandedKey = reverseWordListOrder(lastRoundKey)
+    revExK = reverseWordListOrder(lastRoundKey)
 
     # loop through all 4 words in each round (4x4 times)
-    for i in range(Nk, Nb * (Nr + 1)):
+    for i in range(0, Nb * Nr):
         # figure out indices for word which is 4-words ahead and 3-words ahead
-        prevRoundIdx = 4 * (i - Nk)
-        nextPrevRoundIdx = prevRoundIdx + Nk
+        ahead4wIdx = 4 * i
+        ahead3wIdx = ahead4wIdx + Nk
         # get the words for the given indices
-        prevRound = [reverseExpandedKey[prevRoundIdx], reverseExpandedKey[prevRoundIdx + 1], reverseExpandedKey[prevRoundIdx + 2], reverseExpandedKey[prevRoundIdx + 3]]
-        temp = [reverseExpandedKey[nextPrevRoundIdx], reverseExpandedKey[nextPrevRoundIdx + 1], reverseExpandedKey[nextPrevRoundIdx + 2], reverseExpandedKey[nextPrevRoundIdx + 3]]
+        prevRound = [revExK[ahead4wIdx], revExK[ahead4wIdx + 1], revExK[ahead4wIdx + 2], revExK[ahead4wIdx + 3]]
+        temp = [revExK[ahead3wIdx], revExK[ahead3wIdx + 1], revExK[ahead3wIdx + 2], revExK[ahead3wIdx + 3]]
 
         # if it is the start word (since the buffer is reversed it is the last one in round key) apply the diffusion algorithm on the 3-words ahead word 
         if i % Nk == 3:
             temp = subWord(rotWord(temp))
             # the r_con index also needs to be inverted hence number of rounds - current round
-            temp[3] ^= r_con[(Nk + 1) - (i / Nk)]
+            temp[3] ^= r_con[Nk - (i / Nk)]
 
         # revert the final XOR and append the result to the inverted expanded key buffer
         for j in range(0, 4):
-            reverseExpandedKey.append(temp[j] ^ prevRound[j])
+            revExK.append(temp[j] ^ prevRound[j])
 
     # return the last 4 words (representing the key) in reverse word order
-    return reverseWordListOrder(reverseExpandedKey[-16:])
+    return reverseWordListOrder(revExK[-16:])
 
 # Key guessing function
 # encrypredDeltaSets - list of delta sets encrypted by the key to be guessed
