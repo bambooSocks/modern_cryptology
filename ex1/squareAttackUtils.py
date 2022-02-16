@@ -1,68 +1,68 @@
 import random
 from aes import SI, encrypt, r_con, subWord, rotWord, Nk, Nb, Nr
 
-# Prepares a delta set
+# Prepares a lambda set
 # randomValue - initial value in the positions besides the chosen index
 # chosenIndex - index at which the values with the XOR property are written to
-def generateDeltaSet(randomValue=0, chosenIndex=0):
-    deltaSet = []
+def generateLambdaSet(randomValue=0, chosenIndex=0):
+    lambdaSet = []
     for index in range(256):
         currentState = [randomValue] * 16
         currentState[chosenIndex] = index
-        deltaSet.append(currentState)
-    return deltaSet
+        lambdaSet.append(currentState)
+    return lambdaSet
 
-# Encrypts delta set
-def encryptDeltaSet(deltaSet, key):
-    # apply encryption with provided key on each of the states in delta set
-    return [encrypt(state, key) for state in deltaSet]
+# Encrypts lambda set
+def encryptLambdaSet(lambdaSet, key):
+    # apply encryption with provided key on each of the states in lambda set
+    return [encrypt(state, key) for state in lambdaSet]
 
 # Reverse the value of a byte using given guess and position
-def reverseGuessPositionValue(guess, position, deltaState):
+def reverseGuessPositionValue(guess, position, lambdaState):
     # remove guess from the value at the position and invert the S-box
-    return SI[deltaState[position]^guess]
+    return SI[lambdaState[position]^guess]
 
 # Verify a guess at given position
-def verifyGuessPosition(guess, position, encryptedDeltaSet):
+def verifyGuessPosition(guess, position, encryptedLambdaSet):
     result= 0
-    # loop through all states in delta set and verify that the XOR property holds for given guess
-    for deltaState in encryptedDeltaSet:
-        result ^= reverseGuessPositionValue(guess, position, deltaState) 
+    # loop through all states in lambda set and verify that the XOR property holds for given guess
+    for lambdaState in encryptedLambdaSet:
+        result ^= reverseGuessPositionValue(guess, position, lambdaState) 
     return result == 0
 
 # Finds all possible guesses for given position in the last round key
 # position - position in the last round key to be guessed
-# encryptedDeltaSets - list of delta sets encrypted by the key to be guessed    
-def checkAllGuesses(position, encryptedDeltaSet):
+# encryptedLambdaSets - list of lambda sets encrypted by the key to be guessed    
+def checkAllGuesses(position, encryptedLambdaSet):
     correctGuesses = []
     # go through all possible guesses and append it to the result if the guess is correct
     for guess in range(256):
-        if verifyGuessPosition(guess, position, encryptedDeltaSet):
+        if verifyGuessPosition(guess, position, encryptedLambdaSet):
             correctGuesses.append(guess)
     return correctGuesses
 
 # Finds the correct guess for given position in the last round key
 # position - position in the last round key to be guessed
-# encryptedDeltaSets - list of delta sets encrypted by the key to be guessed
-def getFinalGuess(position, encryptedDeltaSets):
-    # get all the guesses for the first delta set
-    correctGuesses = checkAllGuesses(position, encryptedDeltaSets[0])
+# encryptedLambdaSets - list of lambda sets encrypted by the key to be guessed
+def getFinalGuess(position, encryptedLambdaSets):
+    # get all the guesses for the first lambda set
+    correctGuesses = checkAllGuesses(position, encryptedLambdaSets[0])
     
     # in case that there is only one guess return
     if len(correctGuesses)==1:
         return correctGuesses[0]
 
-    # check for the rest of delta sets
-    for idx in range(1,len(encryptedDeltaSets)):
-        # check guesses for next delta set
-        cg = checkAllGuesses(position, encryptedDeltaSets[idx])
+    # check for the rest of lambda sets
+    for idx in range(1,len(encryptedLambdaSets)):
+        # check guesses for next lambda set
+        cg = checkAllGuesses(position, encryptedLambdaSets[idx])
         # find intersection of the previous guesses and the new ones
         # this should reduce the set of initial guesses to one value
         correctGuesses=[value for value in cg if value in correctGuesses]
         # in case that there is only one guess return
         if len(correctGuesses)==1:
             return correctGuesses[0]
-    # in the case that the delta sets do not reduce the guesses to only one guess
+    # in the case that the lambda sets do not reduce the guesses to only one guess
     # then the function throws an exception
     raise Exception("couldn't find final guess")
 
@@ -109,13 +109,13 @@ def invertKeySchedule(lastRoundKey):
     return reverseWordListOrder(revExK[-16:])
 
 # Key guessing function
-# encrypredDeltaSets - list of delta sets encrypted by the key to be guessed
-def crack(encryptedDeltaSets):
+# encrypredLambdaSets - list of lambda sets encrypted by the key to be guessed
+def crack(encryptedLambdaSets):
     lastRoundKey= []
 
     # guess each key byte separately
     for position in range(16):
-        lastRoundKey.append(getFinalGuess(position, encryptedDeltaSets))
+        lastRoundKey.append(getFinalGuess(position, encryptedLambdaSets))
     
     # return original key
     return invertKeySchedule(lastRoundKey)
@@ -124,12 +124,12 @@ if __name__ == "__main__":
     # test key randomly generated
     keyToGuess = [random.randint(0x00, 0xFF) for _ in range(16)]
 
-    # four delta sets used to crack the key
-    deltaSets = [generateDeltaSet(0x00), generateDeltaSet(0x12), generateDeltaSet(0x34), generateDeltaSet(0xFF)]
-    # encrypted delta sets (by the test key) used for cracking
-    encryptedDeltaSets = map(lambda ds: encryptDeltaSet(ds, keyToGuess), deltaSets)
+    # four lambda sets used to crack the key
+    lambdaSets = [generateLambdaSet(0x00), generateLambdaSet(0x12), generateLambdaSet(0x34), generateLambdaSet(0xFF)]
+    # encrypted lambda sets (by the test key) used for cracking
+    encryptedLambdaSets = map(lambda ls: encryptLambdaSet(ls, keyToGuess), lambdaSets)
 
-    guessedKey = crack(encryptedDeltaSets)
+    guessedKey = crack(encryptedLambdaSets)
 
     print("Key to guess:", keyToGuess)
     print("Guessed key:", guessedKey)
