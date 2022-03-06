@@ -25,7 +25,6 @@ def readTMatrix():
 
     return np.asarray(lines)
 
-
 def getHammingWeight(byte):
     counter = 0
     while byte:
@@ -36,6 +35,35 @@ def getHammingWeight(byte):
 def constructHTable():
     hTable = []
     with open('inputs6.dat') as f:
-        inputValues = np.asarray(list(map(int,f.readline().strip().split(','))))
+        inputValues = list(map(int,f.readline().strip().split(',')))
         for key in range(256):
+            hTable.append(np.asarray(list(map(lambda x:getHammingWeight(S[key^x]),inputValues))))
 
+    return np.asarray(hTable).T
+
+def calculatePearsonCorrelationCoefficients():
+    TTable = readTMatrix()
+    HTable = constructHTable()
+    allCoefficients = []
+    for columnH in HTable.T:
+        currentCoefficients = []
+        for columnT in TTable.T:
+            currentCoefficients.append(np.corrcoef(columnH, columnT)[0][1])
+        allCoefficients.append(currentCoefficients)
+    return np.asarray(allCoefficients)
+
+def determineKey():
+    allCoefficients = calculatePearsonCorrelationCoefficients()
+    max=0
+    bestKey=0
+    for key,column in enumerate(allCoefficients):
+        currentMaximum = np.max(column)
+        if key==0 or currentMaximum>max:
+            max = currentMaximum
+            bestKey = key 
+        # print(key,currentMaximum)
+    return bestKey
+
+
+if __name__ == '__main__':
+    print(determineKey())
