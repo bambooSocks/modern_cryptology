@@ -1,4 +1,8 @@
 import numpy as np
+
+INPUTS_FILE_NAME = 'inputs6.dat'
+T_MATRIX_FILE_NAME = 'T6.dat'
+
 S = [
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
     0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -19,10 +23,9 @@ S = [
 
 def readTMatrix():
     lines = []
-    with open('T6.dat') as f:
+    with open(T_MATRIX_FILE_NAME) as f:
         for line in f.readlines():
             lines.append(np.asarray(list(map(float,line.strip().split(',')))))
-
     return np.asarray(lines)
 
 def getHammingWeight(byte):
@@ -34,11 +37,10 @@ def getHammingWeight(byte):
 
 def constructHTable():
     hTable = []
-    with open('inputs6.dat') as f:
+    with open(INPUTS_FILE_NAME) as f:
         inputValues = list(map(int,f.readline().strip().split(',')))
         for key in range(256):
             hTable.append(np.asarray(list(map(lambda x:getHammingWeight(S[key^x]),inputValues))))
-
     return np.asarray(hTable).T
 
 def calculatePearsonCorrelationCoefficients():
@@ -48,7 +50,7 @@ def calculatePearsonCorrelationCoefficients():
     for columnH in HTable.T:
         currentCoefficients = []
         for columnT in TTable.T:
-            currentCoefficients.append(np.corrcoef(columnH, columnT)[0][1])
+            currentCoefficients.append(abs(np.corrcoef(columnH, columnT)[0][1]))
         allCoefficients.append(currentCoefficients)
     return np.asarray(allCoefficients)
 
@@ -61,7 +63,6 @@ def determineKey():
         if key==0 or currentMaximum>max:
             max = currentMaximum
             bestKey = key 
-        # print(key,currentMaximum)
     return bestKey
 
 
